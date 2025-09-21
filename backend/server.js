@@ -8,8 +8,14 @@ const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 const config = require('./config');
+const connectDB = require('./database');
+const User = require('./models/User');
+const Appointment = require('./models/Appointment');
 const app = express();
 const PORT = config.PORT;
+
+// Connect to MongoDB
+connectDB();
 
 // Middleware
 app.use(helmet({
@@ -108,24 +114,44 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // TODO: Replace with real database lookup
-    // For now, using mock authentication - accept any email/password for testing
-    console.log('Login attempt:', { email, password });
+    console.log('Login attempt:', { email });
+
+    // Find user in database
+    const user = await User.findOne({ email: email.toLowerCase() });
     
-    // Simple mock authentication - accept any email/password combination
-    const user = {
-      id: Date.now().toString(),
-      email: email,
-      role: email.includes('practitioner') || email.includes('doctor') || email.includes('dr.') || email.includes('prac') || email.includes('admin') || email.includes('staff') ? 'practitioner' : 'patient',
-      displayName: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-    };
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
+      });
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account is deactivated'
+      });
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password);
     
-    console.log('User role determined:', user.role, 'for email:', email);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
+      });
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
 
     // Generate JWT token
     const token = jwt.sign(
       { 
-        id: user.id, 
+        id: user._id, 
         email: user.email, 
         role: user.role 
       },
@@ -133,11 +159,13 @@ app.post('/api/auth/login', async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    console.log('User logged in successfully:', user.email, 'Role:', user.role);
+
     res.json({
       success: true,
       message: 'Login successful',
       user: {
-        id: user.id,
+        id: user._id,
         email: user.email,
         role: user.role,
         displayName: user.displayName,
@@ -190,21 +218,33 @@ app.post('/api/auth/register', async (req, res) => {
       });
     }
 
-    // TODO: Check if user already exists in database
-    // For now, using mock data
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = {
-      id: Date.now().toString(),
-      email: email,
-      password: hashedPassword,
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User with this email already exists'
+      });
+    }
+
+    // Create new user
+    const newUser = new User({
+      email: email.toLowerCase(),
+      password: password, // Will be hashed by pre-save middleware
       role: role,
-      displayName: displayName
-    };
+      displayName: displayName,
+      profile: {
+        firstName: displayName.split(' ')[0] || '',
+        lastName: displayName.split(' ').slice(1).join(' ') || ''
+      }
+    });
+
+    await newUser.save();
 
     // Generate JWT token
     const token = jwt.sign(
       { 
-        id: newUser.id, 
+        id: newUser._id, 
         email: newUser.email, 
         role: newUser.role 
       },
@@ -212,11 +252,13 @@ app.post('/api/auth/register', async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    console.log('User registered successfully:', newUser.email, 'Role:', newUser.role);
+
     res.status(201).json({
       success: true,
       message: 'Registration successful',
       user: {
-        id: newUser.id,
+        id: newUser._id,
         email: newUser.email,
         role: newUser.role,
         displayName: newUser.displayName,
@@ -233,7 +275,33 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // Appointments routes
-app.get('/api/appointments', verifyToken, (req, res) => {
+app.get('/api/appointments', verifyToken, async (req, res) => {
+  try {
+    const appointments = await Appointment.find({
+      $or: [
+        { patient: req.user.id },
+        { practitioner: req.user.id }
+      ]
+    })
+    .populate('patient', 'displayName email profile.firstName profile.lastName')
+    .populate('practitioner', 'displayName email profile.firstName profile.lastName')
+    .sort({ date: 1 });
+
+    res.json({
+      success: true,
+      appointments: appointments
+    });
+  } catch (error) {
+    console.error('Error fetching appointments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching appointments'
+    });
+  }
+});
+
+// Fallback mock data route (for testing without MongoDB)
+app.get('/api/appointments/mock', verifyToken, (req, res) => {
   const mockAppointments = [
     {
       id: "1",
@@ -301,50 +369,73 @@ app.put('/api/appointments/:id', verifyToken, (req, res) => {
 });
 
 // Patients routes
-app.get('/api/patients', verifyToken, (req, res) => {
-  const mockPatients = [
-    {
-      id: "1",
-      name: "Sarah Johnson",
-      email: "sarah.johnson@email.com",
-      phone: "+1 (555) 123-4567",
-      lastVisit: "2024-01-10",
-      condition: "Stress Management",
-      progress: 85,
-      nextAppointment: "2024-01-15",
-    },
-    {
-      id: "2",
-      name: "Michael Chen",
-      email: "michael.chen@email.com",
-      phone: "+1 (555) 234-5678",
-      lastVisit: "2024-01-12",
-      condition: "Sleep Disorders",
-      progress: 72,
-      nextAppointment: "2024-01-18",
+app.get('/api/patients', verifyToken, async (req, res) => {
+  try {
+    // Only practitioners can view patients
+    if (req.user.role !== 'practitioner') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only practitioners can view patients.'
+      });
     }
-  ];
-  
-  res.json({
-    success: true,
-    patients: mockPatients
-  });
+
+    const patients = await User.find({ role: 'patient', isActive: true })
+      .select('displayName email profile phone lastLogin healthInfo')
+      .sort({ displayName: 1 });
+
+    res.json({
+      success: true,
+      patients: patients
+    });
+  } catch (error) {
+    console.error('Error fetching patients:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching patients'
+    });
+  }
 });
 
 // Analytics routes
-app.get('/api/analytics', verifyToken, (req, res) => {
-  const mockAnalytics = {
-    totalPatients: 127,
-    totalAppointments: 45,
-    revenue: 12500,
-    successRate: 94,
-    monthlyGrowth: 12.5
-  };
-  
-  res.json({
-    success: true,
-    analytics: mockAnalytics
-  });
+app.get('/api/analytics', verifyToken, async (req, res) => {
+  try {
+    // Only practitioners can view analytics
+    if (req.user.role !== 'practitioner') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only practitioners can view analytics.'
+      });
+    }
+
+    const totalPatients = await User.countDocuments({ role: 'patient', isActive: true });
+    const totalAppointments = await Appointment.countDocuments({ practitioner: req.user.id });
+    const completedAppointments = await Appointment.countDocuments({ 
+      practitioner: req.user.id, 
+      status: 'completed' 
+    });
+    
+    const successRate = totalAppointments > 0 ? Math.round((completedAppointments / totalAppointments) * 100) : 0;
+    
+    const analytics = {
+      totalPatients,
+      totalAppointments,
+      completedAppointments,
+      successRate,
+      revenue: 12500, // TODO: Calculate from actual data
+      monthlyGrowth: 12.5 // TODO: Calculate from actual data
+    };
+    
+    res.json({
+      success: true,
+      analytics: analytics
+    });
+  } catch (error) {
+    console.error('Error fetching analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching analytics'
+    });
+  }
 });
 
 // Error handling middleware

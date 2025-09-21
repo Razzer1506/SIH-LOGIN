@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -25,6 +25,7 @@ import { PracticeAnalytics } from "@/components/dashboard/practice-analytics"
 import { AuthGuard } from "@/components/auth/auth-guard"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
+import { api } from "@/lib/api"
 
 // Mock data - replace with real API calls
 const mockTodayAppointments = [
@@ -103,7 +104,45 @@ const mockRecentPatients = [
 export default function PractitionerDashboard() {
   const [activeTab, setActiveTab] = useState("overview")
   const [searchQuery, setSearchQuery] = useState("")
+  const [appointments, setAppointments] = useState([])
+  const [patients, setPatients] = useState([])
+  const [analytics, setAnalytics] = useState(null)
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
+
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        
+        // Fetch appointments
+        const appointmentsResponse = await api.get('/appointments')
+        console.log('Fetched appointments:', appointmentsResponse)
+        setAppointments(appointmentsResponse.appointments || [])
+        
+        // Fetch patients
+        const patientsResponse = await api.get('/patients')
+        console.log('Fetched patients:', patientsResponse)
+        setPatients(patientsResponse.patients || [])
+        
+        // Fetch analytics
+        const analyticsResponse = await api.get('/analytics')
+        console.log('Fetched analytics:', analyticsResponse)
+        setAnalytics(analyticsResponse.analytics || null)
+        
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        // Fallback to mock data if API fails
+        setAppointments(mockTodayAppointments)
+        setPatients(mockRecentPatients)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   return (
     <AuthGuard requiredRole="practitioner">
@@ -143,7 +182,7 @@ export default function PractitionerDashboard() {
                   <Calendar className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">4</p>
+                  <p className="text-2xl font-bold text-foreground">{loading ? "..." : appointments.length}</p>
                   <p className="text-sm text-muted-foreground">Today's Appointments</p>
                 </div>
               </div>
@@ -157,7 +196,7 @@ export default function PractitionerDashboard() {
                   <Users className="w-6 h-6 text-secondary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">127</p>
+                  <p className="text-2xl font-bold text-foreground">{loading ? "..." : patients.length}</p>
                   <p className="text-sm text-muted-foreground">Active Patients</p>
                 </div>
               </div>
@@ -215,9 +254,13 @@ export default function PractitionerDashboard() {
                     <CardDescription>Your appointments for January 15, 2024</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {mockTodayAppointments.map((appointment) => (
-                      <AppointmentCard key={appointment.id} appointment={appointment} />
-                    ))}
+                    {loading ? (
+                      <div className="text-center py-4">Loading appointments...</div>
+                    ) : (
+                      appointments.map((appointment) => (
+                        <AppointmentCard key={appointment.id} appointment={appointment} />
+                      ))
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -315,9 +358,13 @@ export default function PractitionerDashboard() {
                 <CardDescription>Manage your appointment schedule</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {mockTodayAppointments.map((appointment) => (
-                  <AppointmentCard key={appointment.id} appointment={appointment} detailed />
-                ))}
+                {loading ? (
+                  <div className="text-center py-4">Loading appointments...</div>
+                ) : (
+                  appointments.map((appointment) => (
+                    <AppointmentCard key={appointment.id} appointment={appointment} detailed />
+                  ))
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -344,9 +391,13 @@ export default function PractitionerDashboard() {
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockRecentPatients.map((patient) => (
-                <PatientCard key={patient.id} patient={patient} />
-              ))}
+              {loading ? (
+                <div className="col-span-full text-center py-4">Loading patients...</div>
+              ) : (
+                patients.map((patient) => (
+                  <PatientCard key={patient.id} patient={patient} />
+                ))
+              )}
             </div>
           </TabsContent>
 

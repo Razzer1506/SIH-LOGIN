@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -29,6 +29,7 @@ import { AuthGuard } from "@/components/auth/auth-guard"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { api } from "@/lib/api"
 
 // Mock data - replace with real API calls
 const mockUpcomingSessions = [
@@ -91,7 +92,29 @@ const mockRecentSessions = [
 
 export default function PatientDashboard() {
   const [activeTab, setActiveTab] = useState("progress")
+  const [appointments, setAppointments] = useState([])
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
+
+  // Fetch appointments data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        const response = await api.get('/appointments')
+        console.log('Fetched appointments:', response)
+        setAppointments(response.appointments || [])
+      } catch (error) {
+        console.error('Error fetching appointments:', error)
+        // Fallback to mock data if API fails
+        setAppointments(mockUpcomingSessions)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   const handleBookNewSession = () => {
     router.push("/dashboard/patient/book-session")
