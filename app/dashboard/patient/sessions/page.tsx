@@ -12,101 +12,14 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Calendar, Clock, Star, Search, Filter, Plus, MapPin, Phone, ArrowRight, CalendarDays, Star as StarIcon } from "lucide-react"
 import { PatientLayout } from "@/components/layouts/patient-layout"
+import { useSessions } from "@/contexts/sessions-context"
 import Link from "next/link"
 import { toast } from "sonner"
 
-// Mock data for sessions
-const mockUpcomingSessions = [
-  {
-    id: "1",
-    type: "Abhyanga",
-    practitioner: "Dr. Priya Sharma",
-    practitionerAvatar: "/placeholder.svg?height=40&width=40",
-    date: "2024-01-15",
-    time: "10:00 AM",
-    duration: "60 min",
-    status: "confirmed",
-    location: "Wellness Center - Room 3",
-    phone: "+1 (555) 123-4567",
-    notes: "Full body oil massage with warm herbal oils",
-    price: "$120",
-  },
-  {
-    id: "2",
-    type: "Shirodhara",
-    practitioner: "Dr. Raj Patel",
-    practitionerAvatar: "/placeholder.svg?height=40&width=40",
-    date: "2024-01-17",
-    time: "2:00 PM",
-    duration: "45 min",
-    status: "pending",
-    location: "Wellness Center - Room 1",
-    phone: "+1 (555) 123-4568",
-    notes: "Continuous pouring of warm oil on the forehead",
-    price: "$100",
-  },
-  {
-    id: "3",
-    type: "Panchakarma Consultation",
-    practitioner: "Dr. Priya Sharma",
-    practitionerAvatar: "/placeholder.svg?height=40&width=40",
-    date: "2024-01-20",
-    time: "11:30 AM",
-    duration: "30 min",
-    status: "confirmed",
-    location: "Consultation Room 2",
-    phone: "+1 (555) 123-4567",
-    notes: "Initial assessment and treatment planning",
-    price: "$80",
-  },
-]
-
-const mockPastSessions = [
-  {
-    id: "4",
-    type: "Abhyanga",
-    practitioner: "Dr. Priya Sharma",
-    practitionerAvatar: "/placeholder.svg?height=40&width=40",
-    date: "2024-01-10",
-    time: "10:00 AM",
-    duration: "60 min",
-    status: "completed",
-    location: "Wellness Center - Room 3",
-    rating: 5,
-    feedback: "Excellent session, feeling very relaxed and rejuvenated",
-    price: "$120",
-  },
-  {
-    id: "5",
-    type: "Nasya",
-    practitioner: "Dr. Raj Patel",
-    practitionerAvatar: "/placeholder.svg?height=40&width=40",
-    date: "2024-01-08",
-    time: "3:00 PM",
-    duration: "30 min",
-    status: "completed",
-    location: "Wellness Center - Room 2",
-    rating: 4,
-    feedback: "Good treatment, slight improvement in breathing",
-    price: "$90",
-  },
-  {
-    id: "6",
-    type: "Shirodhara",
-    practitioner: "Dr. Priya Sharma",
-    practitionerAvatar: "/placeholder.svg?height=40&width=40",
-    date: "2024-01-05",
-    time: "1:00 PM",
-    duration: "45 min",
-    status: "completed",
-    location: "Wellness Center - Room 1",
-    rating: 5,
-    feedback: "Amazing experience, felt deeply relaxed and peaceful",
-    price: "$100",
-  },
-]
+// Sessions are now managed by the SessionsContext
 
 export default function PatientSessionsPage() {
+  const { upcomingSessions, pastSessions, loading, error } = useSessions()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("upcoming")
   const [showCalendar, setShowCalendar] = useState(false)
@@ -114,6 +27,19 @@ export default function PatientSessionsPage() {
   const [selectedSession, setSelectedSession] = useState(null)
   const [rating, setRating] = useState(0)
   const [feedback, setFeedback] = useState("")
+
+  // Filter sessions based on search query
+  const filteredUpcomingSessions = upcomingSessions.filter(session =>
+    session.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    session.practitioner.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    session.notes?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const filteredPastSessions = pastSessions.filter(session =>
+    session.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    session.practitioner.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    session.notes?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -174,7 +100,7 @@ export default function PatientSessionsPage() {
                   <Calendar className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{mockUpcomingSessions.length}</p>
+                  <p className="text-2xl font-bold text-foreground">{upcomingSessions.length}</p>
                   <p className="text-sm text-muted-foreground">Upcoming Sessions</p>
                 </div>
               </div>
@@ -188,7 +114,7 @@ export default function PatientSessionsPage() {
                   <Star className="w-6 h-6 text-secondary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{mockPastSessions.length}</p>
+                  <p className="text-2xl font-bold text-foreground">{pastSessions.length}</p>
                   <p className="text-sm text-muted-foreground">Completed Sessions</p>
                 </div>
               </div>
@@ -235,7 +161,20 @@ export default function PatientSessionsPage() {
           </TabsList>
 
           <TabsContent value="upcoming" className="space-y-4">
-            {mockUpcomingSessions.map((session) => (
+            {loading ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Loading sessions...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <p className="text-red-500">Error: {error}</p>
+              </div>
+            ) : filteredUpcomingSessions.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No upcoming sessions found</p>
+              </div>
+            ) : (
+              filteredUpcomingSessions.map((session) => (
               <Card key={session.id} className="border-green-100 hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex flex-col lg:flex-row lg:items-center gap-4">
@@ -298,11 +237,25 @@ export default function PatientSessionsPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              ))
+            )}
           </TabsContent>
 
           <TabsContent value="past" className="space-y-4">
-            {mockPastSessions.map((session) => (
+            {loading ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Loading sessions...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <p className="text-red-500">Error: {error}</p>
+              </div>
+            ) : filteredPastSessions.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No past sessions found</p>
+              </div>
+            ) : (
+              filteredPastSessions.map((session) => (
               <Card key={session.id} className="border-green-100">
                 <CardContent className="p-6">
                   <div className="flex flex-col lg:flex-row lg:items-center gap-4">
@@ -376,7 +329,8 @@ export default function PatientSessionsPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              ))
+            )}
           </TabsContent>
         </Tabs>
 
@@ -410,7 +364,7 @@ export default function PatientSessionsPage() {
                 </div>
               </Button>
 
-              <Button variant="outline" className="bg-transparent h-auto p-4" onClick={() => handleRateSession(mockPastSessions[0])}>
+              <Button variant="outline" className="bg-transparent h-auto p-4" onClick={() => handleRateSession(pastSessions[0])}>
                 <div className="flex items-center gap-3">
                   <Star className="w-5 h-5 text-primary" />
                   <div className="text-left">

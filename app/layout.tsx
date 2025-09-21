@@ -7,6 +7,7 @@ import { Toaster } from "sonner"
 import { AuthProvider } from "@/contexts/auth-context"
 import { MessagingProvider } from "@/contexts/messaging-context"
 import { NotificationProvider } from "@/contexts/notification-context"
+import { SessionsProvider } from "@/contexts/sessions-context"
 import ErrorBoundary from "@/components/error-boundary"
 import { Loading } from "@/components/loading"
 import "./globals.css"
@@ -39,19 +40,21 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans ${inter.variable} ${poppins.variable} antialiased`}>
-        <ErrorBoundary>
-          <AuthProvider>
-            <MessagingProvider>
-              <NotificationProvider>
-                <Suspense fallback={<Loading type="page" message="Loading application..." />}>
-                  {children}
-                </Suspense>
-                <Analytics />
-                <Toaster />
-              </NotificationProvider>
-            </MessagingProvider>
-          </AuthProvider>
-        </ErrorBoundary>
+            <ErrorBoundary>
+              <AuthProvider>
+                <MessagingProvider>
+                  <NotificationProvider>
+                    <SessionsProvider>
+                      <Suspense fallback={<Loading type="page" message="Loading application..." />}>
+                        {children}
+                      </Suspense>
+                      <Analytics />
+                      <Toaster />
+                    </SessionsProvider>
+                  </NotificationProvider>
+                </MessagingProvider>
+              </AuthProvider>
+            </ErrorBoundary>
       </body>
     </html>
   )

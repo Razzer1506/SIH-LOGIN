@@ -9,8 +9,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { PatientLayout } from "@/components/layouts/patient-layout"
-import { Clock, Star, ArrowLeft, Check } from "lucide-react"
+import { Clock, Star, ArrowLeft, Check, CalendarDays } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/contexts/auth-context"
+import { useSessions } from "@/contexts/sessions-context"
+import { toast } from "sonner"
 
 // Mock data for available practitioners and treatments
 const mockPractitioners = [
@@ -42,7 +45,8 @@ const mockTreatments = [
     name: "Abhyanga",
     description: "Full body oil massage with warm herbal oils",
     duration: "60 min",
-    price: "$120",
+    price: "₹9,600",
+    priceInUSD: 120,
     benefits: ["Stress relief", "Improved circulation", "Muscle relaxation"],
   },
   {
@@ -50,7 +54,8 @@ const mockTreatments = [
     name: "Shirodhara",
     description: "Continuous pouring of warm oil on the forehead",
     duration: "45 min",
-    price: "$100",
+    price: "₹8,000",
+    priceInUSD: 100,
     benefits: ["Mental clarity", "Stress reduction", "Better sleep"],
   },
   {
@@ -58,7 +63,8 @@ const mockTreatments = [
     name: "Consultation",
     description: "Initial assessment and treatment planning",
     duration: "30 min",
-    price: "$80",
+    price: "₹6,400",
+    priceInUSD: 80,
     benefits: ["Personalized treatment plan", "Health assessment", "Lifestyle guidance"],
   },
   {
@@ -66,29 +72,130 @@ const mockTreatments = [
     name: "Nasya",
     description: "Nasal administration of medicated oils",
     duration: "30 min",
-    price: "$90",
+    price: "₹7,200",
+    priceInUSD: 90,
     benefits: ["Respiratory health", "Mental clarity", "Sinus relief"],
   },
 ]
 
 export default function BookSessionPage() {
+  const { user, token } = useAuth()
+  const { addSession, refreshSessions } = useSessions()
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [selectedTreatment, setSelectedTreatment] = useState("")
   const [selectedPractitioner, setSelectedPractitioner] = useState("")
   const [selectedTime, setSelectedTime] = useState("")
   const [notes, setNotes] = useState("")
   const [currentStep, setCurrentStep] = useState(1)
+  const [isBooking, setIsBooking] = useState(false)
 
-  const handleBooking = () => {
-    // Mock booking logic
-    console.log("Booking:", {
-      date: selectedDate,
-      treatment: selectedTreatment,
-      practitioner: selectedPractitioner,
-      time: selectedTime,
-      notes,
+  const handleBooking = async () => {
+    console.log('Booking attempt:', {
+      selectedDate,
+      selectedTime,
+      selectedTreatment,
+      selectedPractitioner,
+      selectedTreatmentData,
+      selectedPractitionerData
     })
-    setCurrentStep(4) // Show confirmation
+
+    if (!selectedDate || !selectedTime || !selectedTreatment || !selectedPractitioner) {
+      toast.error("Please fill in all required fields")
+      return
+    }
+
+    setIsBooking(true)
+    try {
+      // For now, we'll add the session directly to the context
+      // This ensures the booking works immediately while we can work on API integration later
+      
+      const sessionData = {
+        type: selectedTreatmentData?.name || '',
+        practitioner: selectedPractitionerData?.name || '',
+        practitionerAvatar: selectedPractitionerData?.avatar,
+        date: selectedDate.toISOString().split('T')[0],
+        time: selectedTime,
+        duration: selectedTreatmentData?.duration || '60 min',
+        status: 'confirmed' as const,
+        location: "Wellness Center - Room 1",
+        phone: "+91 98765 43210",
+        notes: notes,
+        price: selectedTreatmentData?.price || '₹0'
+      }
+
+      console.log('Adding session:', sessionData)
+      
+      // Add session to context
+      addSession(sessionData)
+      
+      // Try to create appointment via API (optional for now)
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/appointments`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            practitionerId: selectedPractitioner,
+            treatment: selectedTreatmentData?.name,
+            date: selectedDate.toISOString(),
+            time: selectedTime,
+            duration: parseInt(selectedTreatmentData?.duration || '60'),
+            location: "Wellness Center - Room 1",
+            notes: notes,
+            cost: selectedTreatmentData?.priceInUSD || 0
+          })
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          console.log('Appointment created in backend:', result)
+          // Refresh sessions from API
+          await refreshSessions()
+        } else {
+          console.log('Backend API not available, using local storage')
+        }
+      } catch (apiError) {
+        console.log('Backend API not available, using local storage:', apiError)
+      }
+      
+      toast.success("Appointment booked successfully!")
+      setCurrentStep(4) // Show confirmation
+    } catch (error) {
+      console.error('Booking error:', error)
+      toast.error("Failed to book appointment. Please try again.")
+    } finally {
+      setIsBooking(false)
+    }
+  }
+
+  const handleAddToCalendar = () => {
+    if (!selectedDate || !selectedTime || !selectedTreatmentData || !selectedPractitionerData) {
+      toast.error("Please complete booking first")
+      return
+    }
+
+    // Create calendar event data
+    const eventData = {
+      title: `${selectedTreatmentData.name} with ${selectedPractitionerData.name}`,
+      start: new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 
+        parseInt(selectedTime.split(':')[0]), parseInt(selectedTime.split(':')[1].split(' ')[0])),
+      duration: selectedTreatmentData.duration,
+      location: "Wellness Center - Room 1",
+      description: `Treatment: ${selectedTreatmentData.name}\nPractitioner: ${selectedPractitionerData.name}\nNotes: ${notes || 'None'}`
+    }
+
+    // Generate calendar URL (Google Calendar)
+    const startDate = eventData.start.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+    const endDate = new Date(eventData.start.getTime() + (parseInt(selectedTreatmentData.duration) * 60000))
+      .toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+    
+    const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventData.title)}&dates=${startDate}/${endDate}&details=${encodeURIComponent(eventData.description)}&location=${encodeURIComponent(eventData.location)}`
+    
+    // Open calendar in new tab
+    window.open(calendarUrl, '_blank')
+    toast.success("Opening calendar to add event")
   }
 
   const selectedTreatmentData = mockTreatments.find((t) => t.id === selectedTreatment)
@@ -348,10 +455,10 @@ export default function BookSessionPage() {
                   </Button>
                   <Button
                     onClick={handleBooking}
-                    disabled={!selectedDate || !selectedTime}
+                    disabled={!selectedDate || !selectedTime || isBooking}
                     className="bg-primary hover:bg-primary/90"
                   >
-                    Book Session
+                    {isBooking ? "Booking..." : "Book Session"}
                   </Button>
                 </div>
               </CardContent>
@@ -398,7 +505,8 @@ export default function BookSessionPage() {
                 <Button asChild className="bg-primary hover:bg-primary/90">
                   <Link href="/dashboard/patient">View Dashboard</Link>
                 </Button>
-                <Button variant="outline" className="bg-transparent">
+                <Button variant="outline" className="bg-transparent" onClick={handleAddToCalendar}>
+                  <CalendarDays className="w-4 h-4 mr-2" />
                   Add to Calendar
                 </Button>
               </div>
