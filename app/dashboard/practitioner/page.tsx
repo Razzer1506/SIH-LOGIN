@@ -23,6 +23,7 @@ import { PatientCard } from "@/components/dashboard/patient-card"
 import { AppointmentCard } from "@/components/dashboard/appointment-card"
 import { PracticeAnalytics } from "@/components/dashboard/practice-analytics"
 import { AuthGuard } from "@/components/auth/auth-guard"
+import { WelcomeMessage } from "@/components/dashboard/welcome-message"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
 import { api } from "@/lib/api"
@@ -148,11 +149,14 @@ export default function PractitionerDashboard() {
     <AuthGuard requiredRole="practitioner">
       <PractitionerLayout>
         <div className="space-y-6">
-        {/* Welcome Header */}
+        {/* Welcome Message */}
+        <WelcomeMessage />
+
+        {/* Action Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="font-heading font-bold text-3xl text-foreground">Good morning, Dr. Sharma</h1>
-            <p className="text-muted-foreground">You have 4 appointments scheduled for today</p>
+            <h2 className="font-heading font-bold text-2xl text-foreground">Your Practice Dashboard</h2>
+            <p className="text-muted-foreground">Manage your patients and appointments</p>
           </div>
           <div className="flex gap-3">
             <Button 

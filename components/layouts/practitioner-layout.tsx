@@ -44,6 +44,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/auth-context"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 
 interface PractitionerLayoutProps {
   children: React.ReactNode
@@ -189,36 +190,7 @@ export function PractitionerLayout({ children }: PractitionerLayoutProps) {
 
             <div className="flex items-center gap-4 ml-auto">
               {/* Notifications */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="relative">
-                    <Bell className="w-5 h-5" />
-                    <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 text-xs bg-destructive">5</Badge>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleNotificationClick("new-patient")}>
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">New Patient Registration</p>
-                      <p className="text-xs text-muted-foreground">Emily Davis has registered for consultation</p>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleNotificationClick("appointment-reminder")}>
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Appointment Reminder</p>
-                      <p className="text-xs text-muted-foreground">Sarah Johnson's session starts in 30 minutes</p>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleNotificationClick("treatment-feedback")}>
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Treatment Feedback</p>
-                      <p className="text-xs text-muted-foreground">Michael Chen rated his session 5 stars</p>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <NotificationBell />
 
               {/* Logout Button */}
               <Button 

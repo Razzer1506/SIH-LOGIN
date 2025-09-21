@@ -30,6 +30,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/auth-context"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 
 interface PatientLayoutProps {
   children: React.ReactNode
@@ -172,36 +173,7 @@ export function PatientLayout({ children }: PatientLayoutProps) {
 
             <div className="flex items-center gap-4 ml-auto">
               {/* Notifications */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="relative">
-                    <Bell className="w-5 h-5" />
-                    <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 text-xs bg-destructive">3</Badge>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleNotificationClick("session-reminder")}>
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Session Reminder</p>
-                      <p className="text-xs text-muted-foreground">Your Abhyanga session is tomorrow at 10:00 AM</p>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleNotificationClick("progress-update")}>
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Progress Update</p>
-                      <p className="text-xs text-muted-foreground">Your wellness score has improved by 5%</p>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleNotificationClick("new-message")}>
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">New Message</p>
-                      <p className="text-xs text-muted-foreground">Dr. Priya Sharma sent you a message</p>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <NotificationBell />
 
               {/* Logout Button */}
               <Button 

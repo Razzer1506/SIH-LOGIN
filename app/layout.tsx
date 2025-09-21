@@ -5,6 +5,8 @@ import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import { Toaster } from "sonner"
 import { AuthProvider } from "@/contexts/auth-context"
+import { MessagingProvider } from "@/contexts/messaging-context"
+import { NotificationProvider } from "@/contexts/notification-context"
 import ErrorBoundary from "@/components/error-boundary"
 import { Loading } from "@/components/loading"
 import "./globals.css"
@@ -39,11 +41,15 @@ export default function RootLayout({
       <body className={`font-sans ${inter.variable} ${poppins.variable} antialiased`}>
         <ErrorBoundary>
           <AuthProvider>
-            <Suspense fallback={<Loading type="page" message="Loading application..." />}>
-              {children}
-            </Suspense>
-            <Analytics />
-            <Toaster />
+            <MessagingProvider>
+              <NotificationProvider>
+                <Suspense fallback={<Loading type="page" message="Loading application..." />}>
+                  {children}
+                </Suspense>
+                <Analytics />
+                <Toaster />
+              </NotificationProvider>
+            </MessagingProvider>
           </AuthProvider>
         </ErrorBoundary>
       </body>

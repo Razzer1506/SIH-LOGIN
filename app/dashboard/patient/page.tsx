@@ -26,6 +26,7 @@ import { SessionCard } from "@/components/dashboard/session-card"
 import { ProgressChart } from "@/components/dashboard/progress-chart"
 import { WellnessMetrics } from "@/components/dashboard/wellness-metrics"
 import { AuthGuard } from "@/components/auth/auth-guard"
+import { WelcomeMessage } from "@/components/dashboard/welcome-message"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -148,10 +149,13 @@ export default function PatientDashboard() {
     <AuthGuard requiredRole="patient">
       <PatientLayout>
         <div className="space-y-6">
-        {/* Welcome Header */}
+        {/* Welcome Message */}
+        <WelcomeMessage />
+
+        {/* Action Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="font-heading font-bold text-3xl text-foreground">Welcome back, John</h1>
+            <h2 className="font-heading font-bold text-2xl text-foreground">Your Dashboard</h2>
             <p className="text-muted-foreground">Track your wellness journey and manage your treatments</p>
           </div>
           <Button 
