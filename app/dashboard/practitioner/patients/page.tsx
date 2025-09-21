@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import {
   Users,
   Search,
@@ -144,6 +149,12 @@ export default function PractitionerPatientsPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [conditionFilter, setConditionFilter] = useState("all")
   const [activeTab, setActiveTab] = useState("all")
+  const [selectedPatient, setSelectedPatient] = useState<any>(null)
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false)
+  const [messageText, setMessageText] = useState("")
+  const router = useRouter()
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -178,6 +189,44 @@ export default function PractitionerPatientsPage() {
   const activePatients = filteredPatients.filter((p) => p.status === "active")
   const newPatients = filteredPatients.filter((p) => new Date(p.joinDate) > new Date("2024-01-01"))
   const highProgressPatients = filteredPatients.filter((p) => p.progress >= 80)
+
+  // Handler functions
+  const handleViewPatient = (patient: any) => {
+    setSelectedPatient(patient)
+    setIsViewModalOpen(true)
+  }
+
+  const handleEditPatient = (patient: any) => {
+    setSelectedPatient(patient)
+    setIsEditModalOpen(true)
+  }
+
+  const handleMessagePatient = (patient: any) => {
+    setSelectedPatient(patient)
+    setIsMessageModalOpen(true)
+  }
+
+  const handleSendMessage = () => {
+    if (!messageText.trim()) {
+      toast.error("Please enter a message")
+      return
+    }
+    
+    // TODO: Implement actual messaging system
+    toast.success(`Message sent to ${selectedPatient.name}`)
+    setMessageText("")
+    setIsMessageModalOpen(false)
+  }
+
+  const handleScheduleSession = (patient: any) => {
+    // Navigate to new appointment page with patient pre-selected
+    router.push(`/dashboard/practitioner/new-appointment?patient=${patient.id}`)
+  }
+
+  const handleInitialConsultation = (patient: any) => {
+    // Navigate to new appointment page for initial consultation
+    router.push(`/dashboard/practitioner/new-appointment?patient=${patient.id}&type=consultation`)
+  }
 
   return (
     <PractitionerLayout>
@@ -356,15 +405,30 @@ export default function PractitionerPatientsPage() {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="bg-transparent flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-transparent flex-1"
+                        onClick={() => handleViewPatient(patient)}
+                      >
                         <Eye className="w-4 h-4 mr-1" />
                         View
                       </Button>
-                      <Button variant="outline" size="sm" className="bg-transparent flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-transparent flex-1"
+                        onClick={() => handleEditPatient(patient)}
+                      >
                         <Edit className="w-4 h-4 mr-1" />
                         Edit
                       </Button>
-                      <Button variant="outline" size="sm" className="bg-transparent flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-transparent flex-1"
+                        onClick={() => handleMessagePatient(patient)}
+                      >
                         <MessageSquare className="w-4 h-4 mr-1" />
                         Message
                       </Button>
@@ -409,10 +473,19 @@ export default function PractitionerPatientsPage() {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button size="sm" className="bg-primary hover:bg-primary/90 flex-1">
+                      <Button 
+                        size="sm" 
+                        className="bg-primary hover:bg-primary/90 flex-1"
+                        onClick={() => handleScheduleSession(patient)}
+                      >
                         Schedule Session
                       </Button>
-                      <Button variant="outline" size="sm" className="bg-transparent">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-transparent"
+                        onClick={() => handleMessagePatient(patient)}
+                      >
                         <MessageSquare className="w-4 h-4" />
                       </Button>
                     </div>
@@ -462,10 +535,19 @@ export default function PractitionerPatientsPage() {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button size="sm" className="bg-primary hover:bg-primary/90 flex-1">
+                      <Button 
+                        size="sm" 
+                        className="bg-primary hover:bg-primary/90 flex-1"
+                        onClick={() => handleInitialConsultation(patient)}
+                      >
                         Initial Consultation
                       </Button>
-                      <Button variant="outline" size="sm" className="bg-transparent">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-transparent"
+                        onClick={() => handleEditPatient(patient)}
+                      >
                         <Edit className="w-4 h-4" />
                       </Button>
                     </div>
@@ -526,6 +608,220 @@ export default function PractitionerPatientsPage() {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Patient View Modal */}
+        <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Patient Details - {selectedPatient?.name}</DialogTitle>
+              <DialogDescription>
+                Complete patient information and treatment history
+              </DialogDescription>
+            </DialogHeader>
+            {selectedPatient && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <Avatar className="w-20 h-20">
+                    <AvatarImage src={selectedPatient.avatar || "/placeholder.svg"} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                      {selectedPatient.name.split(" ").map((n: string) => n[0]).join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h3 className="text-2xl font-bold">{selectedPatient.name}</h3>
+                    <p className="text-muted-foreground">{selectedPatient.condition}</p>
+                    <Badge className={getStatusColor(selectedPatient.status)}>{selectedPatient.status}</Badge>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-semibold mb-2">Contact Information</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4" />
+                        <span>{selectedPatient.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4" />
+                        <span>{selectedPatient.phone}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        <span>DOB: {selectedPatient.dateOfBirth}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold mb-2">Health Information</h4>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <span className="font-medium">Dosha Type:</span> {selectedPatient.doshaType}
+                      </div>
+                      <div>
+                        <span className="font-medium">Gender:</span> {selectedPatient.gender}
+                      </div>
+                      <div>
+                        <span className="font-medium">Join Date:</span> {selectedPatient.joinDate}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Treatment Progress</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Progress</span>
+                      <span className={getProgressColor(selectedPatient.progress)}>{selectedPatient.progress}%</span>
+                    </div>
+                    <Progress value={selectedPatient.progress} className="h-2" />
+                    <div className="flex justify-between text-sm">
+                      <span>Sessions Completed</span>
+                      <span>{selectedPatient.completedSessions}/{selectedPatient.totalSessions}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Primary Concerns</h4>
+                  <p className="text-sm text-muted-foreground">{selectedPatient.primaryConcerns}</p>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Current Treatments</h4>
+                  <p className="text-sm text-muted-foreground">{selectedPatient.currentTreatments}</p>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Notes</h4>
+                  <p className="text-sm text-muted-foreground">{selectedPatient.notes}</p>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Patient Edit Modal */}
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Patient - {selectedPatient?.name}</DialogTitle>
+              <DialogDescription>
+                Update patient information and treatment details
+              </DialogDescription>
+            </DialogHeader>
+            {selectedPatient && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="patient-name">Full Name</Label>
+                    <Input id="patient-name" defaultValue={selectedPatient.name} />
+                  </div>
+                  <div>
+                    <Label htmlFor="patient-email">Email</Label>
+                    <Input id="patient-email" defaultValue={selectedPatient.email} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="patient-phone">Phone</Label>
+                    <Input id="patient-phone" defaultValue={selectedPatient.phone} />
+                  </div>
+                  <div>
+                    <Label htmlFor="patient-dosha">Dosha Type</Label>
+                    <Select defaultValue={selectedPatient.doshaType}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="vata">Vata</SelectItem>
+                        <SelectItem value="pitta">Pitta</SelectItem>
+                        <SelectItem value="kapha">Kapha</SelectItem>
+                        <SelectItem value="vata-pitta">Vata-Pitta</SelectItem>
+                        <SelectItem value="vata-kapha">Vata-Kapha</SelectItem>
+                        <SelectItem value="pitta-kapha">Pitta-Kapha</SelectItem>
+                        <SelectItem value="tridosha">Tridosha</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="patient-condition">Primary Condition</Label>
+                  <Input id="patient-condition" defaultValue={selectedPatient.condition} />
+                </div>
+
+                <div>
+                  <Label htmlFor="patient-concerns">Primary Concerns</Label>
+                  <Textarea id="patient-concerns" defaultValue={selectedPatient.primaryConcerns} />
+                </div>
+
+                <div>
+                  <Label htmlFor="patient-treatments">Current Treatments</Label>
+                  <Textarea id="patient-treatments" defaultValue={selectedPatient.currentTreatments} />
+                </div>
+
+                <div>
+                  <Label htmlFor="patient-notes">Notes</Label>
+                  <Textarea id="patient-notes" defaultValue={selectedPatient.notes} />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={() => {
+                    toast.success("Patient information updated successfully")
+                    setIsEditModalOpen(false)
+                  }}>
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Message Modal */}
+        <Dialog open={isMessageModalOpen} onOpenChange={setIsMessageModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Send Message to {selectedPatient?.name}</DialogTitle>
+              <DialogDescription>
+                Send a message to your patient
+              </DialogDescription>
+            </DialogHeader>
+            {selectedPatient && (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="message-text">Message</Label>
+                  <Textarea 
+                    id="message-text"
+                    placeholder="Type your message here..."
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => {
+                    setIsMessageModalOpen(false)
+                    setMessageText("")
+                  }}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSendMessage}>
+                    Send Message
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </PractitionerLayout>
   )
