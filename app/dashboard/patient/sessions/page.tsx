@@ -13,17 +13,21 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Calendar, Clock, Star, Search, Filter, Plus, MapPin, Phone, ArrowRight, CalendarDays, Star as StarIcon } from "lucide-react"
 import { PatientLayout } from "@/components/layouts/patient-layout"
 import { useSessions } from "@/contexts/sessions-context"
+import { RescheduleDialog } from "@/components/dialogs/reschedule-dialog"
+import { CancelConfirmationDialog } from "@/components/dialogs/cancel-confirmation-dialog"
 import Link from "next/link"
 import { toast } from "sonner"
 
 // Sessions are now managed by the SessionsContext
 
 export default function PatientSessionsPage() {
-  const { upcomingSessions, pastSessions, loading, error } = useSessions()
+  const { upcomingSessions, pastSessions, loading, error, rescheduleSession, cancelSession } = useSessions()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("upcoming")
   const [showCalendar, setShowCalendar] = useState(false)
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false)
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [selectedSession, setSelectedSession] = useState(null)
   const [rating, setRating] = useState(0)
   const [feedback, setFeedback] = useState("")
@@ -49,6 +53,8 @@ export default function PatientSessionsPage() {
         return "bg-yellow-100 text-yellow-800"
       case "completed":
         return "bg-blue-100 text-blue-800"
+      case "cancelled":
+        return "bg-red-100 text-red-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -72,6 +78,34 @@ export default function PatientSessionsPage() {
     setSelectedSession(null)
     setRating(0)
     setFeedback("")
+  }
+
+  const handleReschedule = (session) => {
+    setSelectedSession(session)
+    setRescheduleDialogOpen(true)
+  }
+
+  const handleCancel = (session) => {
+    setSelectedSession(session)
+    setCancelDialogOpen(true)
+  }
+
+  const handleRescheduleConfirm = async (sessionId, newDate, newTime) => {
+    try {
+      await rescheduleSession(sessionId, newDate, newTime)
+    } catch (error) {
+      console.error('Reschedule error:', error)
+      throw error
+    }
+  }
+
+  const handleCancelConfirm = async (sessionId) => {
+    try {
+      await cancelSession(sessionId)
+    } catch (error) {
+      console.error('Cancel error:', error)
+      throw error
+    }
   }
 
   return (
@@ -225,10 +259,20 @@ export default function PatientSessionsPage() {
                           <p className="font-semibold text-lg text-primary">{session.price}</p>
                         </div>
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="bg-transparent">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="bg-transparent hover:bg-blue-50 hover:text-blue-700"
+                            onClick={() => handleReschedule(session)}
+                          >
                             Reschedule
                           </Button>
-                          <Button variant="outline" size="sm" className="bg-transparent">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="bg-transparent hover:bg-red-50 hover:text-red-700"
+                            onClick={() => handleCancel(session)}
+                          >
                             Cancel
                           </Button>
                         </div>
@@ -485,6 +529,22 @@ export default function PatientSessionsPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Reschedule Dialog */}
+        <RescheduleDialog
+          open={rescheduleDialogOpen}
+          onOpenChange={setRescheduleDialogOpen}
+          session={selectedSession}
+          onReschedule={handleRescheduleConfirm}
+        />
+
+        {/* Cancel Confirmation Dialog */}
+        <CancelConfirmationDialog
+          open={cancelDialogOpen}
+          onOpenChange={setCancelDialogOpen}
+          session={selectedSession}
+          onCancel={handleCancelConfirm}
+        />
       </div>
     </PatientLayout>
   )
