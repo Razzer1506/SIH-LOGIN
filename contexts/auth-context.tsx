@@ -16,9 +16,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const storedUser = localStorage.getItem('ayursutra_user')
     const storedToken = localStorage.getItem('ayursutra_token')
     
+    console.log('Auth context initialization - storedUser:', storedUser, 'storedToken:', storedToken)
+    
     if (storedUser && storedToken) {
       try {
         const userData = JSON.parse(storedUser)
+        console.log('Parsed user data:', userData)
         setUser(userData)
       } catch (error) {
         console.error('Error parsing stored user:', error)
@@ -35,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await apiService.login(email, password)
       
       if (response.success) {
+        console.log('Login successful, setting user:', response.user)
         setUser(response.user)
         localStorage.setItem('ayursutra_user', JSON.stringify(response.user))
         localStorage.setItem('ayursutra_token', response.user.token)

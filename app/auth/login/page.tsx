@@ -28,11 +28,7 @@ export default function LoginPage() {
   // Redirect if user is already logged in
   useEffect(() => {
     if (user) {
-      if (user.role === 'patient') {
-        router.push("/dashboard/patient")
-      } else if (user.role === 'practitioner') {
-        router.push("/dashboard/practitioner")
-      }
+      router.push("/dashboard")
     }
   }, [user, router])
 
@@ -53,9 +49,16 @@ export default function LoginPage() {
 
     try {
       setIsLoading(true)
-      await signIn(email, password)
-      // Redirect will happen automatically via useEffect based on user role from database
+      const result = await signIn(email, password)
+      console.log('Login result:', result)
+      
+      // Wait a moment for state to update, then redirect
+      setTimeout(() => {
+        console.log('Redirecting to dashboard...')
+        router.push("/dashboard")
+      }, 100)
     } catch (error) {
+      console.error('Login error:', error)
       // Error is handled in the auth context
     } finally {
       setIsLoading(false)

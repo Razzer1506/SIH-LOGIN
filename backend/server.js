@@ -116,9 +116,11 @@ app.post('/api/auth/login', async (req, res) => {
     const user = {
       id: Date.now().toString(),
       email: email,
-      role: email.includes('practitioner') || email.includes('doctor') || email.includes('dr.') ? 'practitioner' : 'patient',
+      role: email.includes('practitioner') || email.includes('doctor') || email.includes('dr.') || email.includes('prac') || email.includes('admin') || email.includes('staff') ? 'practitioner' : 'patient',
       displayName: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
     };
+    
+    console.log('User role determined:', user.role, 'for email:', email);
 
     // Generate JWT token
     const token = jwt.sign(

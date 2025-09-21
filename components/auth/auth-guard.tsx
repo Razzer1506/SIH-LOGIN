@@ -19,11 +19,7 @@ export function AuthGuard({ children, redirectTo = '/auth/login', requiredRole }
       router.push(redirectTo)
     } else if (!loading && user && requiredRole && user.role !== requiredRole) {
       // Redirect to appropriate dashboard based on user's actual role
-      if (user.role === 'patient') {
-        router.push('/dashboard/patient')
-      } else if (user.role === 'practitioner') {
-        router.push('/dashboard/practitioner')
-      }
+      router.push('/dashboard')
     }
   }, [user, loading, router, redirectTo, requiredRole])
 
